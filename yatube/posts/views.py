@@ -2,11 +2,10 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.text import Truncator
 from django.views.decorators.cache import cache_page
 
 from .forms import CommentForm, PostForm
-from .models import Comment, Follow, Group, Post
+from .models import Follow, Group, Post
 from .utils import paginate_posts
 
 User = get_user_model()
@@ -37,18 +36,14 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     page_obj = paginate_posts(request, author.posts.select_related())
     num_posts = author.posts.count()
-    not_anonymous = request.user.is_authenticated
-
-    display_buttons = not_anonymous and (author != request.user)
-    following = (not_anonymous and author.following.filter(
-        user=request.user).exists()
-    ) or None
+    following = request.user.is_authenticated and author.following.filter(
+        user=request.user
+    ).exists()
 
     context = {
         'page_obj': page_obj,
         'author': author,
         'num_posts': num_posts,
-        'display_buttons': display_buttons,
         'following': following,
     }
     return render(request, 'posts/profile.html', context)
@@ -57,14 +52,13 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     num_posts = post.author.posts.count()
-    text_for_title = Truncator(post.text).chars(settings.SYMB_FOR_TITLE)
     is_author = bool(post.author == request.user)
     form = CommentForm(request.POST or None)
-    comments = Comment.objects.filter(post=post)
+    comments = post.comments.select_related()
     context = {
         'post': post,
         'num_posts': num_posts,
-        'text_for_title': text_for_title,
+        'symb_for_title': settings.SYMB_FOR_TITLE,
         'is_author': is_author,
         'form': form,
         'comments': comments
@@ -132,8 +126,9 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    follows = request.user.follower.select_related()
-    posts = Post.objects.filter(author__in=[f.author for f in follows])
+    posts = Post.objects.filter(
+        author__following__user=request.user
+    ).select_related()
     page_obj = paginate_posts(request, posts)
 
     context = {'page_obj': page_obj}
@@ -155,7 +150,8 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    if request.user.follower.filter(author=author).exists():
-        request.user.follower.get(author=author).delete()
+    follow = request.user.follower.filter(author=author).first()
+    if follow is not None:
+        follow.delete()
 
     return redirect('posts:follow_index')

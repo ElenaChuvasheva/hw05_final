@@ -37,10 +37,13 @@ class PostsPagesTests(TestCase):
 
         cls.author = User.objects.create_user(username='test_author')
         cls.just_user = User.objects.create_user(username='just_user')
-        cls.follower = User.objects.create_user(username='follower')
+        cls.follower_user = User.objects.create_user(username='follower')
+        cls.another_author = User.objects.create_user(
+            username='another_author'
+        )
 
         cls.follow = Follow.objects.create(
-            user=cls.follower,
+            user=cls.follower_user,
             author=cls.author
         )
 
@@ -58,18 +61,18 @@ class PostsPagesTests(TestCase):
             content_type='image/gif'
         )
 
-        for i in range(1, POSTS_GROUP + 1):
+        for post_number in range(1, POSTS_GROUP + 1):
             Post.objects.create(
                 author=cls.author,
-                text=f'Тестовый пост {i} группы',
+                text=f'Тестовый пост {post_number} группы',
                 group=cls.group,
                 image=cls.uploaded
             )
 
-        for i in range(1, POSTS_ANOTHER_GROUP + 1):
+        for post_number in range(1, POSTS_ANOTHER_GROUP + 1):
             Post.objects.create(
                 author=cls.author,
-                text=f'Тестовый пост {i} другой группы',
+                text=f'Тестовый пост {post_number} другой группы',
                 group=cls.another_group,
                 image=cls.uploaded
             )
@@ -115,10 +118,10 @@ class PostsPagesTests(TestCase):
         self.author_client = Client()
         self.author_client.force_login(PostsPagesTests.author)
         self.guest_client = Client()
-        self.follower_client = Client()
-        self.follower_client.force_login(PostsPagesTests.follower)
         self.just_user_client = Client()
         self.just_user_client.force_login(PostsPagesTests.just_user)
+        self.follower_user_client = Client()
+        self.follower_user_client.force_login(PostsPagesTests.follower_user)
 
     def test_pages_use_correct_template(self):
         '''URL-адрес использует соответствующий шаблон.'''
@@ -141,11 +144,11 @@ class PostsPagesTests(TestCase):
 
     def test_first_paginator_page(self):
         '''Проверка: правильное количество постов на 1-й стр. пагинатора.'''
-        reverse_names = [
+        reverse_names = (
             reverse('posts:index'),
             reverse('posts:group_list', args=(PostsPagesTests.group.slug,)),
             reverse('posts:profile', args=(PostsPagesTests.author.username,))
-        ]
+        )
 
         for reverse_name in reverse_names:
             with self.subTest(reverse_name=reverse_name):
@@ -239,12 +242,12 @@ class PostsPagesTests(TestCase):
             text='Новый пост группы',
             group=PostsPagesTests.group
         )
-        reverse_names = [
+        reverse_names = (
             reverse('posts:index'),
             reverse(
                 'posts:group_list', args=(PostsPagesTests.group.slug,)),
             reverse('posts:profile', args=(PostsPagesTests.author.username,))
-        ]
+        )
 
         for reverse_name in reverse_names:
             with self.subTest(reverse_name=reverse_name):
@@ -285,6 +288,7 @@ class PostsPagesTests(TestCase):
     def test_image_to_post_page(self):
         '''Картинка попадает на страницу поста'''
         post_with_image = Post.objects.get(pk=1)
+
         response = self.author_client.get(
             reverse('posts:post_detail', args=(post_with_image.pk,))
         )
@@ -295,12 +299,14 @@ class PostsPagesTests(TestCase):
 
     def test_comment_authorized(self):
         '''Комментировать посты может только авторизованный пользователь.'''
+        redirect_to = (reverse('users:login')
+                       + '?next=' + reverse('posts:add_comment', args=(1,)))
+
         response = self.guest_client.post(
             reverse('posts:add_comment', args=(1,)),
             data={'text': 'Текст комментария'},
         )
-        redirect_to = (reverse('users:login')
-                       + '?next=' + reverse('posts:add_comment', args=(1,)))
+
         self.assertRedirects(response, redirect_to)
 
     def test_comment_to_post_page(self):
@@ -311,9 +317,11 @@ class PostsPagesTests(TestCase):
             author=PostsPagesTests.author,
             text='Текст комментария'
         )
+
         response = self.author_client.get(reverse(
             'posts:post_detail', args=(post.pk,)))
         comments_from_page = response.context.get('comments')
+
         self.assertEqual(new_comment, comments_from_page[0])
 
     def test_cache_add(self):
@@ -327,6 +335,7 @@ class PostsPagesTests(TestCase):
         cache_after_add = self.author_client.get(
             reverse('posts:index')
         ).content
+
         self.assertIn('Пост для тестирования кэша'.encode(), cache_after_add)
         cache.clear()
 
@@ -337,6 +346,7 @@ class PostsPagesTests(TestCase):
             text='Пост для кэша',
             group=PostsPagesTests.group
         )
+
         cache_before_delete = self.author_client.get(
             reverse('posts:index')
         ).content
@@ -344,6 +354,7 @@ class PostsPagesTests(TestCase):
         self.assertIn('Пост для кэша'.encode(), cache_before_delete)
 
         new_post.delete()
+
         cache_after_delete = self.author_client.get(
             reverse('posts:index')
         ).content
@@ -351,6 +362,7 @@ class PostsPagesTests(TestCase):
         self.assertIn('Пост для кэша'.encode(), cache_after_delete)
 
         cache.clear()
+
         cache_after_clear = self.author_client.get(
             reverse('posts:index')
         ).content
@@ -359,22 +371,37 @@ class PostsPagesTests(TestCase):
 
         cache.clear()
 
-    def test_follow_unfollow(self):
-        '''Можно подписываться на авторов и отписываться от них.'''
-        number_follows_start = PostsPagesTests.just_user.follower.count()
-        follow = Follow.objects.create(
-            user=PostsPagesTests.just_user,
-            author=PostsPagesTests.author
+    def test_follow(self):
+        '''Можно подписаться на автора.'''
+        number_follows_start = PostsPagesTests.follower_user.follower.count()
+
+        self.follower_user_client.get(
+            reverse('posts:profile_follow',
+                    args=(PostsPagesTests.another_author.username,))
         )
-        number_follows_create = PostsPagesTests.just_user.follower.count()
+
+        number_follows_create = PostsPagesTests.follower_user.follower.count()
         difference = number_follows_create - number_follows_start
 
         self.assertEqual(difference, 1)
 
-        follow.delete()
-        number_follows_delete = PostsPagesTests.just_user.follower.count()
+    def test_unfollow(self):
+        '''Можно отписаться от автора.'''
+        Follow.objects.create(
+            user=PostsPagesTests.follower_user,
+            author=PostsPagesTests.another_author
+        )
+        number_follows_start = PostsPagesTests.follower_user.follower.count()
 
-        self.assertEqual(number_follows_start, number_follows_delete)
+        self.follower_user_client.get(
+            reverse('posts:profile_unfollow',
+                    args=(PostsPagesTests.another_author.username,))
+        )
+
+        number_follows_delete = PostsPagesTests.follower_user.follower.count()
+        difference = number_follows_start - number_follows_delete
+
+        self.assertEqual(difference, 1)
 
     def test_follow_page(self):
         '''Новая запись появляется только в ленте подписчиков.'''
@@ -384,14 +411,16 @@ class PostsPagesTests(TestCase):
             group=PostsPagesTests.group
         )
 
-        follower_response = self.follower_client.get(
+        follower_response = self.follower_user_client.get(
             reverse('posts:follow_index')
         )
         last_post = follower_response.context.get('page_obj')[0]
+
         self.assertEqual(last_post, new_post)
 
         just_user_response = self.just_user_client.get(
             reverse('posts:follow_index')
         )
+
         for post in just_user_response.context.get('page_obj'):
             self.assertNotEqual(post, new_post)

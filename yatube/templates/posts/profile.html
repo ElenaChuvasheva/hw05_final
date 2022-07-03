@@ -6,7 +6,7 @@
 <div class="container py-5">        
   <h1>Все посты пользователя {{ author.get_full_name }} </h1>
   <h3>Всего постов: {{ num_posts }} </h3>  
-  {% if display_buttons %}
+  {% if user.is_authenticated and user != author %}
     {% if following %}
       <a
         class="btn btn-lg btn-light"
