@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
@@ -58,7 +57,6 @@ def post_detail(request, post_id):
     context = {
         'post': post,
         'num_posts': num_posts,
-        'symb_for_title': settings.SYMB_FOR_TITLE,
         'is_author': is_author,
         'form': form,
         'comments': comments
@@ -150,8 +148,8 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    follow = request.user.follower.filter(author=author).first()
-    if follow is not None:
-        follow.delete()
+    follow = request.user.follower.filter(author=author)
+    if follow.exists():
+        follow[0].delete()
 
     return redirect('posts:follow_index')

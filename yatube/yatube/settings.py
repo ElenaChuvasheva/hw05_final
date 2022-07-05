@@ -113,4 +113,3 @@ STATICFILES_DIRS = (os.path.join(BASE_DIR, 'static'),)
 STATIC_URL = '/static/'
 
 POSTS_PER_PAGE = 10
-SYMB_FOR_TITLE = 30

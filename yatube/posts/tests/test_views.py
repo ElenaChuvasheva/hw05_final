@@ -373,17 +373,16 @@ class PostsPagesTests(TestCase):
 
     def test_follow(self):
         '''Можно подписаться на автора.'''
-        number_follows_start = PostsPagesTests.follower_user.follower.count()
 
         self.follower_user_client.get(
             reverse('posts:profile_follow',
                     args=(PostsPagesTests.another_author.username,))
         )
 
-        number_follows_create = PostsPagesTests.follower_user.follower.count()
-        difference = number_follows_create - number_follows_start
-
-        self.assertEqual(difference, 1)
+        self.assertTrue(Follow.objects.filter(
+            user=PostsPagesTests.follower_user,
+            author=PostsPagesTests.another_author)
+        )
 
     def test_unfollow(self):
         '''Можно отписаться от автора.'''
