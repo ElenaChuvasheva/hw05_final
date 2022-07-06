@@ -150,6 +150,6 @@ def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
     follow = request.user.follower.filter(author=author)
     if follow.exists():
-        follow[0].delete()
+        follow.delete()
 
     return redirect('posts:follow_index')
