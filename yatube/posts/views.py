@@ -54,15 +54,19 @@ def post_detail(request, post_id):
     is_author = bool(post.author == request.user)
     form = CommentForm(request.POST or None)
     comments = post.comments.select_related()
+    num_comments = post.comments.count()
     context = {
         'post': post,
         'num_posts': num_posts,
         'is_author': is_author,
         'form': form,
-        'comments': comments
+        'comments': comments,
+        'num_comments': num_comments,
     }
 
-    return render(request, 'posts/post_detail.html', context)
+    return render(
+        request, 'posts/post_detail.html', context
+    )
 
 
 @login_required
