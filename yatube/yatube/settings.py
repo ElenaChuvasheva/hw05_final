@@ -4,7 +4,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = 'k@ymu--ua$(j)l_j(0scv=cyhc+9i(^*9f52p=!lkxc-*h^@%s'
 
-DEBUG = True
+DEBUG = False
 
 CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
 
@@ -18,6 +18,7 @@ ALLOWED_HOSTS = [
     'testserver',
     'www.chuvashevaelena.pythonanywhere.com',
     'chuvashevaelena.pythonanywhere.com',
+    '84.201.138.122'
 ]
 
 INSTALLED_APPS = [
