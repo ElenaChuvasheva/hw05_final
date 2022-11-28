@@ -16,23 +16,22 @@ git clone <адрес репозитория>
 ```
 cd hw05_final/
 ```
-
-Cоздать и активировать виртуальное окружение:
+Cоздайте и активируйте виртуальное окружение:
 ```
 python -m venv venv
 ```
 ```
 source venv/bin/activate
 ```
-Установить зависимости из файла requirements.txt:
+Установите зависимости из файла requirements.txt:
 ```
 pip install -r requirements.txt
 ```
-Выполнить миграции:
+Выполните миграции:
 ```
 python manage.py migrate
 ```
-Запустить проект:
+Запустите проект:
 ```
 python manage.py runserver
 ```
