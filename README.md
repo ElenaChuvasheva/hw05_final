@@ -31,6 +31,16 @@ pip install -r requirements.txt
 ```
 cd .\yatube\
 ```
+Зайдите в shell:
+```
+python manage.py shell
+```
+и выполните там команду для получения SECRET_KEY:
+```
+from django.core.management.utils import get_random_secret_key  
+get_random_secret_key()
+```
+Запишите SECRET_KEY в соответствующее место в файле settings.py.
 Выполните миграции:
 ```
 python manage.py migrate
